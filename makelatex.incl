@@ -1,0 +1,63 @@
+# Makefile for LaTeX
+# ------------------
+
+INPUT ?= main.tex
+
+# environemnt
+export LC_ALL = C
+
+# file variables
+TEX = $(INPUT)
+PDF = $(basename $(INPUT)).pdf
+LOG = $(basename $(INPUT)).log
+
+# file name for internal latexmk db file
+LTXMKFDB = $(basename $(INPUT)).fdb_latexmk
+# file name to write my latexmk settings to
+LTXMKCFG = $(basename $(INPUT)).latexmkcfg
+
+# settings for latexmk
+define LTXMKCFGSTR
+$$pdflatex = 'pdflatex -halt-on-error -file-line-error %O %S';
+$$bibtex_use = 2;
+$$biber = 'biber --debug %O %S';
+$$clean_ext = '%R.run.xml';
+endef
+export LTXMKCFGSTR
+
+# save latexmk settings to file
+latexmkcfg:
+	echo "$$LTXMKCFGSTR" > $(LTXMKCFG)
+
+
+.DEFAULT_GOAL := run
+#
+# the normal targets
+#
+
+dotex: latexmkcfg
+	latexmk -r $(LTXMKCFG) -pdf $(TEX)
+
+show:
+	showpdf $(PDF)
+
+run: dotex clean show
+
+build: cleanall run
+
+.PHONY: clean cleanall
+
+# cleaning, but keep the TeX log file!
+clean: latexmkcfg
+	cp -p $(LOG) $(LOG)_sav
+	cp -p $(LTXMKFDB) $(LTXMKFDB)_sav
+
+	latexmk -r $(LTXMKCFG) -c
+
+	- rm $(LTXMKCFG)
+	- mv $(LOG)_sav $(LOG) 
+	- mv $(LTXMKFDB)_sav $(LTXMKFDB) 
+
+# clean all files, incl. log, db and output file
+cleanall: latexmkcfg
+	latexmk -r $(LTXMKCFG) -C
